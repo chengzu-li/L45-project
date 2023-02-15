@@ -12,8 +12,6 @@ from torch import Tensor
 
 from torch_geometric.nn import MessagePassing, GCNConv, DenseGCNConv, GINConv, GraphConv
 from torch_geometric.utils import add_self_loops, degree, to_dense_adj, convert
-from torch_geometric.nn import global_mean_pool, GlobalAttention, global_max_pool
-from torch_geometric.nn.aggr import Aggregation, MultiAggregation
 
 from typing import (
     Any,
@@ -29,24 +27,18 @@ from typing import (
 # For aggregation function: https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#aggregation-operators
 
 class Customize_GCNConv(MessagePassing):
-    def __init__(self, in_channels, out_channels, aggr="max", customize_aggr=False):
+    def __init__(self, in_channels, out_channels, aggr="max"):
         """
         This is adopted from the GCN implemented by MessagePassing network in torch_geometric
         Args:
             in_channels:
             out_channels:
             aggr:
-            customize_aggr: whether or not to use the customized aggregation operator.
         """
-        if not customize_aggr:
-            super(Customize_GCNConv, self).__init__(aggr=aggr)
-        else:
-            super(Customize_GCNConv, self).__init__()
+        super(Customize_GCNConv, self).__init__(aggr=aggr)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
         self.bias = nn.Parameter(torch.Tensor(out_channels))
-
-        self.customize_aggr = customize_aggr
 
         self.reset_parameters()
 
@@ -85,18 +77,18 @@ class Customize_GCNConv(MessagePassing):
         # Step 4: Normalize node features.
         return norm.view(-1, 1) * x_j
 
-    def aggregate(self, inputs: Tensor, index: Tensor,
-                  ptr: Optional[Tensor] = None,
-                  dim_size: Optional[int] = None) -> Tensor:
-        if not self.customize_aggr:
-            return self.aggr_module(inputs, index, ptr=ptr, dim_size=dim_size,
-                                    dim=self.node_dim)
-        else:
-
-            raise NotImplementedError("Customized aggr specified when initializing the Customize_GCNConv Layer "
-                                      "not implemented.")
-
-    # def customize_agg()
+    # def aggregate(self, inputs: Tensor, index: Tensor,
+    #               ptr: Optional[Tensor] = None,
+    #               dim_size: Optional[int] = None) -> Tensor:
+    #     if not self.customize_aggr:
+    #         return self.aggr_module(inputs, index, ptr=ptr, dim_size=dim_size,
+    #                                 dim=self.node_dim)
+    #     else:
+    #
+    #         raise NotImplementedError("Customized aggr specified when initializing the Customize_GCNConv Layer "
+    #                                   "not implemented.")
+    #
+    # # def customize_agg()
 
 
 class Customize_BA_Shapes_GCN(nn.Module):
@@ -124,11 +116,9 @@ class Customize_BA_Shapes_GCN(nn.Module):
 
     def forward(self, x, edge_index):
         x = self.conv0(x, edge_index)
-        print(x.shape)
         x = F.relu(x)
 
         x = self.conv1(x, edge_index)
-        print(x.shape)
         x = F.relu(x)
 
         x = self.conv2(x, edge_index)
