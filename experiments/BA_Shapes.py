@@ -10,15 +10,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import pickle
+import numpy as np
 
 from sklearn.cluster import KMeans, MeanShift, DBSCAN
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+import sys
+sys.path.append("../")
 from utilities import *
 from model.l45_BA_Shapes_GCN import *
 from model.activation_classifier import *
-import sys
-sys.path.append("../")
+
+
 
 
 def main(args):
@@ -42,6 +45,7 @@ def main(args):
 
     # hyperparameters
     torch.random.manual_seed(hyper_args.get("seed"))
+    np.random.seed(hyper_args.get("seed"))
     epochs = hyper_args.get("epochs")
     lr = hyper_args.get("lr")
 
@@ -57,7 +61,6 @@ def main(args):
     ##############################################################################
 
     paths = prepare_output_paths(dataset_name, k)
-
     G, labels = load_syn_data(dataset_name)
     data = prepare_syn_data(G, labels, train_test_split)
 
@@ -85,6 +88,7 @@ def main(args):
             print('Training model...')
             train(model, data, epochs, lr, paths['base'])
 
+        torch.random.manual_seed(42)
         # TSNE conversion
         tsne_models = []
         tsne_data = []
@@ -157,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_type', type=str,
                         default="customize", choices=['customize'])
     parser.add_argument('--load_pretrained', action='store_true')
-    parser.add_argument('--aggr', nargs="*", default=['add', "mean"])
+    parser.add_argument('--aggr', nargs="*", default=['add', "mean", 'max'])
     parser.add_argument('--hyperparam', type=str,
                         default="hyper_conf/BA_Shapes.yaml")
     args = parser.parse_args()
