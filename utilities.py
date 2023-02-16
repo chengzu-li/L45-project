@@ -162,14 +162,14 @@ def train(model, data, epochs, lr, path):
     with open(os.path.join(path, "activations.txt"), 'wb') as file:
         pickle.dump(ACTIVATION_LIST, file)
 
-def prepare_output_paths(dataset_name, k):
+def prepare_output_paths(dataset_name, k, aggr):
     """
     Setup paths
     :param dataset_name: name of the dataset we are using
     :param k: number of cluster
     :return: dict with different path that you can use
     """
-    path = f"output/{dataset_name}/"
+    path = f"output/{dataset_name}/{aggr}"
     path_tsne = os.path.join(path, "TSNE")
     path_pca = os.path.join(path, "PCA")
     path_umap = os.path.join(path, "UMAP")
@@ -178,6 +178,7 @@ def prepare_output_paths(dataset_name, k):
     path_ward = os.path.join(path, f"WARD")
     path_dbscan = os.path.join(path, f"DBSCAN")
     path_edges = os.path.join(path, f"edges")
+    path_final_result = os.path.join(path, f"results.txt")
     os.makedirs(path, exist_ok=True)
     os.makedirs(path_tsne, exist_ok=True)
     os.makedirs(path_pca, exist_ok=True)
@@ -189,7 +190,7 @@ def prepare_output_paths(dataset_name, k):
     os.makedirs(path_edges, exist_ok=True)
 
     return {"base": path, "TSNE": path_tsne, "PCA": path_pca, "UMAP": path_umap, "KMeans": path_kmeans, "HC": path_hc,
-            "Ward": path_ward, "DBSCAN": path_dbscan, "edges": path_edges}
+            "Ward": path_ward, "DBSCAN": path_dbscan, "edges": path_edges, "result": path_final_result}
 
 def load_syn_data(dataset_str):
     """

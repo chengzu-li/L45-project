@@ -63,7 +63,6 @@ def main(args):
         k = training_args.get("k")
         ##############################################################################
 
-        paths = prepare_output_paths(dataset_name, k)
         G, labels = load_syn_data(dataset_name)
         data = prepare_syn_data(G, labels, train_test_split)
 
@@ -72,6 +71,9 @@ def main(args):
         for aggr in aggr_list:
             torch.random.manual_seed(42)
             print(f'Aggregator: {aggr}')
+
+            paths = prepare_output_paths(dataset_name, k, aggr)
+
             activation_to_clear = list(activation_list.keys())
             for key in activation_to_clear:
                 activation_list.pop(key)
@@ -154,20 +156,26 @@ def main(args):
             completeness_scores.append(d)
             print(d)
 
+            with open(paths['result'], "w") as f:
+                f.write(str(d))
+
             print('---------------------------')
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_name', type=str,
+    parser.add_argument('--dataset_name', type=str, nargs="*",
                         default=['BA_Shapes', 'BA_Grid', 'BA_Community',
-                                 'Tree_Cycle', 'Tree_Grid'], choices=['BA_Shapes', 'BA_Grid',
-                                                                      'BA_Community', 'Tree_Cycle',
-                                                                      'Tree_Grid'])
+                                 'Tree_Cycle', 'Tree_Grid'],
+                        choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
+                                 'Tree_Cycle', 'Tree_Grid'])
     parser.add_argument('--model_type', type=str,
                         default="customize", choices=['customize'])
     parser.add_argument('--load_pretrained', action='store_true')
-    parser.add_argument('--aggr', nargs="*", default=['add', "mean", 'max'])
+    parser.add_argument('--aggr', nargs="*",
+                        default=['add', "mean", 'max'],
+                        choices=['add', 'mean', 'max', 'var', 'std', 'median', 'mul'])
+    # FIXME: max, std, mul don't work on my laptop...
     parser.add_argument('--hyperparam', type=str,
                         default="hyper_conf/")
     args = parser.parse_args()
