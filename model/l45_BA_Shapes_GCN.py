@@ -91,8 +91,8 @@ class Customize_GCNConv(MessagePassing):
     # # def customize_agg()
 
 
-class Customize_BA_Shapes_GCN(nn.Module):
-    def __init__(self, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
+class Customize_GCN(nn.Module):
+    def __init__(self, num_layers, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
         """
 
         Args:
@@ -102,30 +102,22 @@ class Customize_BA_Shapes_GCN(nn.Module):
             name:
             aggr: Possible choices for aggr: https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#aggregation-operators
         """
-        super(Customize_BA_Shapes_GCN, self).__init__()
+        super(Customize_GCN, self).__init__()
 
         self.name = name
+        self.num_layers = num_layers
 
-        self.conv0 = Customize_GCNConv(num_in_features, num_hidden_features, aggr=aggr)
-        self.conv1 = Customize_GCNConv(num_hidden_features, num_hidden_features, aggr=aggr)
-        self.conv2 = Customize_GCNConv(num_hidden_features, num_hidden_features, aggr=aggr)
-        self.conv3 = Customize_GCNConv(num_hidden_features, num_hidden_features, aggr=aggr)
+        self.layers = [Customize_GCNConv(num_in_features, num_hidden_features, aggr=aggr)]
+        self.layers += [Customize_GCNConv(num_hidden_features, num_hidden_features, aggr=aggr) for _ in range(num_layers-1)]
+        self.layers = nn.ModuleList(self.layers)
 
         # linear layers
         self.linear = nn.Linear(num_hidden_features, num_classes)
 
     def forward(self, x, edge_index):
-        x = self.conv0(x, edge_index)
-        x = F.relu(x)
-
-        x = self.conv1(x, edge_index)
-        x = F.relu(x)
-
-        x = self.conv2(x, edge_index)
-        x = F.relu(x)
-
-        x = self.conv3(x, edge_index)
-        x = F.relu(x)
+        for i in range(self.num_layers):
+            x = self.layers[i](x, edge_index)
+            x = F.relu(x)
 
         x = self.linear(x)
 

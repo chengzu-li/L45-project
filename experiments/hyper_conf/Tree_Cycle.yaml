@@ -1,0 +1,11 @@
+hyper:
+  seed: 42
+  epochs: 25000
+  lr: 0.001
+data:
+  train_test_split: 0.8
+model:
+  num_hidden_units: 50
+  num_classes: 2
+  num_layers: 3
+k: 15
