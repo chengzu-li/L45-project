@@ -12,6 +12,8 @@ from sklearn.cluster import KMeans, MeanShift, DBSCAN, AgglomerativeClustering
 from sklearn.metrics import pairwise_distances_argmin_min, pairwise_distances
 from sklearn.neighbors import NearestCentroid
 
+from tqdm import tqdm
+
 def set_rc_params():
     """
     It sets some visulisation parameters
@@ -29,14 +31,17 @@ def set_rc_params():
     plt.rc('figure', titlesize=large, facecolor='white')
     plt.rc('legend', loc='upper left')
 
-global activation_list
-activation_list = {}
+# global activation_list
+# activation_list = {}
+global ACTIVATION_LIST
+ACTIVATION_LIST = {}
 
 def get_activation(idx):
     '''Learned from: https://discuss.pytorch.org/t/how-can-l-load-my-best-model-as-a-feature-extractor-evaluator/17254/6'''
     def hook(model, input, output):
-        activation_list[idx] = output.detach()
+        ACTIVATION_LIST[idx] = output.detach()
     return hook
+
 def register_hooks(model):
     """
     register hooks to extract activations
@@ -100,7 +105,8 @@ def train(model, data, epochs, lr, path):
     test_mask = data["test_mask"]
 
     # iterate for number of epochs
-    for epoch in range(epochs):
+    torch.autograd.set_detect_anomaly(True)
+    for epoch in tqdm(range(epochs)):
             # set mode to training
             model.train()
             optimizer.zero_grad()
@@ -154,7 +160,7 @@ def train(model, data, epochs, lr, path):
     torch.save(model.state_dict(), os.path.join(path, "model.pkl"))
 
     with open(os.path.join(path, "activations.txt"), 'wb') as file:
-        pickle.dump(activation_list, file)
+        pickle.dump(ACTIVATION_LIST, file)
 
 def prepare_output_paths(dataset_name, k):
     """
