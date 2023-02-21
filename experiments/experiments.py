@@ -173,7 +173,7 @@ if __name__ == "__main__":
                         default="customize", choices=['customize'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
-                        default=['add', "mean", 'max'],
+                        default=['add', "mean"],
                         choices=['add', 'mean', 'max', 'var', 'std', 'median', 'mul'])
     # FIXME: max, std, mul don't work on my laptop...
     parser.add_argument('--hyperparam', type=str,
