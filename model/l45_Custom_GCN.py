@@ -102,7 +102,7 @@ class Customize_GNN(MessagePassing):
         self.lin.reset_parameters()
         self.bias.data.zero_()
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, norm):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
 
@@ -113,14 +113,6 @@ class Customize_GNN(MessagePassing):
         x = self.lin(x)
 
         # Step 3: Compute normalization.
-        data = Data(edge_index=edge_index, num_nodes=x.size(0))
-        tmp = to_networkx(data, to_undirected=True)
-        norm = []
-        for index in range(len(edge_index[0])):
-            s1 = set(tmp[edge_index[0][index].item()])
-            s2 = set(tmp[edge_index[1][index].item()])
-            norm += [len(s1.intersection(s2))/len(s1.union(s2))]
-        norm = torch.tensor(norm)
 
 
         # Step 4-5: Start propagating messages.
@@ -153,17 +145,34 @@ class Customize_GCN(nn.Module):
 
         self.name = name
         self.num_layers = num_layers
+        self.norm = []
 
-        self.layers = [Customize_GCNConv(num_in_features, num_hidden_features, agg=agg)]
-        self.layers += [Customize_GCNConv(num_hidden_features, num_hidden_features, agg=agg) for _ in range(num_layers-1)]
+        self.layers = [Customize_GNN(num_in_features, num_hidden_features, agg=agg)]
+        self.layers += [Customize_GNN(num_hidden_features, num_hidden_features, agg=agg) for _ in range(num_layers-1)]
         self.layers = nn.ModuleList(self.layers)
 
         # linear layers
         self.linear = nn.Linear(num_hidden_features, num_classes)
 
     def forward(self, x, edge_index):
+        if self.norm == []:
+            edge_index_tmp, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+            data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
+            tmp = to_networkx(data, to_undirected=True)
+            norm = []
+            for index in range(len(edge_index_tmp[0])):
+                s1 = set(tmp[edge_index_tmp[0][index].item()])
+                s2 = set(tmp[edge_index_tmp[1][index].item()])
+                norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
+            # row, col = edge_index_tmp
+            # deg = degree(col, x.size(0), dtype=x.dtype)
+            # deg_inv_sqrt = deg.pow(-0.5)
+            # deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+            # norm_deg = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+            # self.norm = torch.tensor(norm) * norm_deg
+            self.norm = torch.tensor(norm)
         for i in range(self.num_layers):
-            x = self.layers[i](x, edge_index)
+            x = self.layers[i](x, edge_index, self.norm)
             x = F.relu(x)
 
         x = self.linear(x)

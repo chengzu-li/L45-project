@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 import sys
 sys.path.append("../")
 from utilities import *
-from model.l45_BA_Shapes_GCN import *
+from model.l45_Custom_GCN import *
 from model.activation_classifier import *
 
 
