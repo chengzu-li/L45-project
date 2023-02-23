@@ -18,10 +18,15 @@ from sklearn.decomposition import PCA
 import sys
 sys.path.append("../")
 from utilities import *
-from model.l45_Custom_GCN import *
+from model.l45_Novel_Node_GCN import Novel_Node_GCN
+from model.l45_Normal_GCN import Customize_GCN
 from model.activation_classifier import *
 
 
+MODEL_DICT = {
+    "customized": Customize_GCN,
+    "novel_node": Novel_Node_GCN,
+}
 
 
 def main(args):
@@ -31,7 +36,8 @@ def main(args):
 
     for dataset_name in dataset_name_list:
 
-        model_type = Customize_GCN
+        model_type = MODEL_DICT[args.model_type]
+
         load_pretrained = args.load_pretrained
 
         aggr_list = args.aggr
@@ -72,7 +78,7 @@ def main(args):
             torch.random.manual_seed(42)
             print(f'Aggregator: {aggr}')
 
-            paths = prepare_output_paths(dataset_name, k, aggr)
+            paths = prepare_output_paths(args, dataset_name, k, aggr)
 
             activation_to_clear = list(activation_list.keys())
             for key in activation_to_clear:
@@ -170,7 +176,7 @@ if __name__ == "__main__":
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid'])
     parser.add_argument('--model_type', type=str,
-                        default="customize", choices=['customize'])
+                        default="customize", choices=['customize', 'novel_node'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
                         default=['add', "mean"],

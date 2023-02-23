@@ -162,14 +162,17 @@ def train(model, data, epochs, lr, path):
     with open(os.path.join(path, "activations.txt"), 'wb') as file:
         pickle.dump(ACTIVATION_LIST, file)
 
-def prepare_output_paths(dataset_name, k, aggr):
+def prepare_output_paths(args, dataset_name, k, aggr):
     """
     Setup paths
     :param dataset_name: name of the dataset we are using
     :param k: number of cluster
     :return: dict with different path that you can use
     """
-    path = f"output/{dataset_name}/{aggr}"
+    if args.model_type != "customized":
+        path = f"output-{args.model_type}/{dataset_name}/{aggr}"
+    else:
+        path = f"output/{dataset_name}/{aggr}"
     path_tsne = os.path.join(path, "TSNE")
     path_pca = os.path.join(path, "PCA")
     path_umap = os.path.join(path, "UMAP")
