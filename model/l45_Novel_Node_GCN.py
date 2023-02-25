@@ -131,7 +131,7 @@ class Node_GCNConv(MessagePassing):
 
 
 class Novel_Node_GCN(nn.Module):
-    def __init__(self, num_layers, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
+    def __init__(self, args, num_layers, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
         """
 
         Args:
@@ -143,6 +143,7 @@ class Novel_Node_GCN(nn.Module):
         """
         super(Novel_Node_GCN, self).__init__()
 
+        self.args = args
         self.name = name
         self.num_layers = num_layers
         self.norm = []

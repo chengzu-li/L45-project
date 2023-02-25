@@ -18,14 +18,16 @@ from sklearn.decomposition import PCA
 import sys
 sys.path.append("../")
 from utilities import *
-from model.l45_Novel_Node_GCN import Novel_Node_GCN
 from model.l45_Normal_GCN import Customize_GCN
+from model.l45_Novel_Node_GCN import Novel_Node_GCN
+from model.l45_Novel_Edge_GCN import Novel_Edge_GCN
 from model.activation_classifier import *
 
 
 MODEL_DICT = {
     "customized": Customize_GCN,
     "novel_node": Novel_Node_GCN,
+    'novel_edge': Novel_Edge_GCN
 }
 
 
@@ -84,7 +86,7 @@ def main(args):
             for key in activation_to_clear:
                 activation_list.pop(key)
 
-            model = model_type(num_layers, data["x"].shape[1], num_hidden_units, num_classes, dataset_name, aggr)
+            model = model_type(args, num_layers, data["x"].shape[1], num_hidden_units, num_classes, dataset_name, aggr)
 
             if load_pretrained:
                 print("Loading pretrained model...")
@@ -176,11 +178,14 @@ if __name__ == "__main__":
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid'])
     parser.add_argument('--model_type', type=str,
-                        default="customize", choices=['customize', 'novel_node'])
+                        default="customize", choices=['customize', 'novel_node', 'novel_edge'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
                         default=['add', "mean"],
                         choices=['add', 'mean', 'max', 'var', 'std', 'median', 'mul'])
+    # Similarity Measure in Novel_Edge_GCN
+    parser.add_argument('--similar_measure', type=str, default=None,
+                        choices=['edge', 'edit_dist'])
     # FIXME: max, std, mul don't work on my laptop...
     parser.add_argument('--hyperparam', type=str,
                         default="hyper_conf/")
