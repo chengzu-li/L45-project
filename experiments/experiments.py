@@ -25,7 +25,7 @@ from model.activation_classifier import *
 
 
 MODEL_DICT = {
-    "customized": Customize_GCN,
+    "customize": Customize_GCN,
     "novel_node": Novel_Node_GCN,
     'novel_edge': Novel_Edge_GCN
 }
@@ -181,7 +181,7 @@ if __name__ == "__main__":
                         default="customize", choices=['customize', 'novel_node', 'novel_edge'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
-                        default=['add', "mean"],
+                        default=['add', "mean", "median", "var"],
                         choices=['add', 'mean', 'max', 'var', 'std', 'median', 'mul'])
     # Similarity Measure in Novel_Edge_GCN
     parser.add_argument('--similar_measure', type=str, default=None,

@@ -162,6 +162,10 @@ def train(model, data, epochs, lr, path):
     with open(os.path.join(path, "activations.txt"), 'wb') as file:
         pickle.dump(ACTIVATION_LIST, file)
 
+    with open(os.path.join(path, "accuracy.txt"), 'wb') as file:
+        result = [f"train_acc: {train_acc}", f"test_acc: {test_acc}"]
+        pickle.dump(str(result), file)
+
 def prepare_output_paths(args, dataset_name, k, aggr):
     """
     Setup paths
