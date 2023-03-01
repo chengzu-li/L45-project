@@ -44,6 +44,9 @@ def main(args):
 
         aggr_list = args.aggr
         ##############################################################################
+        # Show figures
+        show_figures = args.show_figures
+
         # Get the task-specific hyper parameters for the data, model and training
         with open(args.hyperparam+dataset_name+'.yaml') as f:
             file = f.read()
@@ -72,7 +75,10 @@ def main(args):
         ##############################################################################
 
         G, labels = load_syn_data(dataset_name)
-        data = prepare_syn_data(G, labels, train_test_split)
+        if dataset_name in ['Twitch', 'Cora']:
+            data = prepare_real_data(G, train_test_split)
+        else:
+            data = prepare_syn_data(G, labels, train_test_split)
 
         activation_list = ACTIVATION_LIST
 
@@ -99,7 +105,7 @@ def main(args):
             else:
                 # model.apply(weights_init)
                 print('Training model...')
-                train(model, data, epochs, lr, paths['base'])
+                train(model, data, epochs, lr, paths['base'], show_figures)
 
             torch.random.manual_seed(42)
             # TSNE conversion
@@ -111,7 +117,8 @@ def main(args):
             activation = torch.squeeze(activation_list[key]).detach().numpy()
             tsne_model = TSNE(n_components=2)
             d = tsne_model.fit_transform(activation)
-            plot_activation_space(d, labels, "TSNE-Reduced", layer_num, paths['TSNE'], "(coloured by labels)")
+            plot_activation_space(d, labels, "TSNE-Reduced", layer_num, paths['TSNE'], "(coloured by labels)",
+                                  plot=show_figures)
 
             tsne_models.append(tsne_model)
             tsne_data.append(d)
@@ -123,7 +130,8 @@ def main(args):
             activation = torch.squeeze(activation_list[key]).detach().numpy()
             pca_model = PCA(n_components=2)
             d = pca_model.fit_transform(activation)
-            plot_activation_space(d, labels, "PCA-Reduced", layer_num, paths['PCA'], "(coloured by labels)")
+            plot_activation_space(d, labels, "PCA-Reduced", layer_num, paths['PCA'], "(coloured by labels)",
+                                  plot=show_figures)
 
             pca_models.append(pca_model)
             pca_data.append(d)
@@ -142,11 +150,12 @@ def main(args):
             pred_labels = kmeans_model.predict(activation)
 
             plot_clusters(tsne_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_TSNE",
-                          "(TSNE Reduced)")
+                          "(TSNE Reduced)", plot=show_figures)
             plot_clusters(pca_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_PCA",
-                          "(PCA Reduced)")
+                          "(PCA Reduced)", plot=show_figures)
             sample_graphs, sample_feat = plot_samples(kmeans_model, activation, data["y"], layer_num, k, "KMeans", "raw",
-                                                      num_nodes_view, edges, num_expansions, paths['KMeans'])
+                                                      num_nodes_view, edges, num_expansions, paths['KMeans'],
+                                                      plot=show_figures)
             raw_sample_graphs.append(sample_graphs)
             raw_kmeans_models.append(kmeans_model)
 
@@ -173,10 +182,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', type=str, nargs="*",
-                        default=['BA_Shapes', 'BA_Grid', 'BA_Community',
+                        default=['Cora', 'Twitch', 'BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid'],
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
-                                 'Tree_Cycle', 'Tree_Grid'])
+                                 'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str,
                         default="customize", choices=['customize', 'novel_node', 'novel_edge'])
     parser.add_argument('--load_pretrained', action='store_true')
@@ -189,6 +198,8 @@ if __name__ == "__main__":
     # FIXME: max, std, mul don't work on my laptop...
     parser.add_argument('--hyperparam', type=str,
                         default="hyper_conf/")
+    parser.add_argument('--show_figures', type=bool,
+                        default=False)
     args = parser.parse_args()
 
     # assert args.dataset_name in args.hyperparam, \

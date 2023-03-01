@@ -12,6 +12,8 @@ from sklearn.cluster import KMeans, MeanShift, DBSCAN, AgglomerativeClustering
 from sklearn.metrics import pairwise_distances_argmin_min, pairwise_distances
 from sklearn.neighbors import NearestCentroid
 
+from torch_geometric.datasets import Twitch, Planetoid
+
 from tqdm import tqdm
 
 def set_rc_params():
@@ -81,7 +83,7 @@ def test(model, node_data_x, node_data_y, edge_list, mask):
     correct += pred[mask].eq(node_data_y[mask]).sum().item()
     return correct / (len(node_data_y[mask]))
 
-def train(model, data, epochs, lr, path):
+def train(model, data, epochs, lr, path, plot=True):
     """
     Train the model
     :param model: the model we want to train
@@ -135,8 +137,8 @@ def train(model, data, epochs, lr, path):
             print('Epoch: {:03d}, Loss: {:.5f}, Train Acc: {:.5f}, Test Acc: {:.5f}'.
                   format(epoch, loss.item(), train_acc, test_acc), end = "\r")
 
-            if train_acc >= 0.95 and test_acc >= 0.95:
-                break
+            # if train_acc >= 0.95 and test_acc >= 0.95:
+            #     break
     # plut accuracy graph
     plt.plot(train_accuracies, label="Train Accuracy")
     plt.plot(test_accuracies, label="Testing Accuracy")
@@ -145,7 +147,8 @@ def train(model, data, epochs, lr, path):
     plt.ylabel("Accuracy")
     plt.legend(loc='upper right')
     plt.savefig(os.path.join(path, f"model_accuracy_plot.png"))
-    plt.show()
+    if plot:
+        plt.show()
 
     plt.plot(train_losses, label="Train Loss")
     plt.plot(test_losses, label="Testing Loss")
@@ -154,7 +157,8 @@ def train(model, data, epochs, lr, path):
     plt.ylabel("Loss")
     plt.legend(loc='upper right')
     plt.savefig(os.path.join(path, f"model_loss_plot.png"))
-    plt.show()
+    if plot:
+        plt.show()
 
     # save model
     torch.save(model.state_dict(), os.path.join(path, "model.pkl"))
@@ -224,10 +228,27 @@ def load_syn_data(dataset_str):
     elif dataset_str == "Tree_Grid":
         G = nx.readwrite.read_gpickle("../data/Tree_Grid/graph_tree_8_80.gpickel")
         role_ids = np.load("../data/Tree_Grid/role_ids_tree_8_80.npy")
+
+    elif dataset_str == 'Twitch':
+        G = Twitch('../data/Twitch', 'EN')[0]
+        role_ids = G.y
+
+    elif dataset_str == 'Cora':
+        G = Planetoid('../data/Cora', 'cora')[0]
+        role_ids = G.y
+
     else:
         raise Exception("Invalid Syn Dataset Name")
 
     return G, role_ids
+
+def prepare_real_data(G, train_split):
+    train_mask = np.random.rand(len(G.x)) < train_split
+    test_mask = ~train_mask
+    edge_list = torch.transpose(G.edge_index, 1, 0)
+    data = {"x": G.x, "y": G.y, "edges": G.edge_index, "edge_list": edge_list, "train_mask": train_mask,
+         "test_mask": test_mask}
+    return data
 
 def prepare_syn_data(G, labels, train_split, if_adj=False):
     """
@@ -265,7 +286,7 @@ def prepare_syn_data(G, labels, train_split, if_adj=False):
 
     return {"x": features, "y": labels, "edges": edges, "edge_list": edge_list, "train_mask": train_mask, "test_mask": test_mask}
 
-def plot_activation_space(data, labels, activation_type, layer_num, path, note="", naming_help=""):
+def plot_activation_space(data, labels, activation_type, layer_num, path, note="", naming_help="", plot=True):
     """
     Plot the activation space after a dimentionality reduction
     :param data: features
@@ -284,9 +305,10 @@ def plot_activation_space(data, labels, activation_type, layer_num, path, note="
     ax.legend(handles=scatter.legend_elements()[0], labels=list(np.unique(labels)), bbox_to_anchor=(1.05, 1))
 
     plt.savefig(os.path.join(path, f"{layer_num}_layer{naming_help}.png"))
-    plt.show()
+    if plot:
+        plt.show()
 
-def plot_clusters(data, labels, clustering_type, k, layer_num, path, data_type, reduction_type="", note=""):
+def plot_clusters(data, labels, clustering_type, k, layer_num, path, data_type, reduction_type="", note="", plot=True):
     """
     Plot cluster
     :param data: features
@@ -310,7 +332,8 @@ def plot_clusters(data, labels, clustering_type, k, layer_num, path, data_type, 
         ncol = int(k / 20) + 1
     ax.legend(bbox_to_anchor=(1.05, 1), ncol=ncol)
     plt.savefig(os.path.join(path, f"{layer_num}layer_{data_type}{reduction_type}.png"))
-    plt.show()
+    if plot:
+        plt.show()
 
 def get_node_distances(clustering_model, data):
     """
@@ -331,7 +354,8 @@ def get_node_distances(clustering_model, data):
 
     return res_sorted
 
-def plot_samples(clustering_model, data, y, layer_num, k, clustering_type, reduction_type, num_nodes_view, edges, num_expansions, path, graph_data=None, graph_name=None):
+def plot_samples(clustering_model, data, y, layer_num, k, clustering_type, reduction_type, num_nodes_view, edges,
+                 num_expansions, path, graph_data=None, graph_name=None, plot=True):
     """
     Plot the num_node_view nearest to the centroid of the cluster, for each cluster
     :param clustering_model: the trained clustering model
@@ -408,8 +432,8 @@ def plot_samples(clustering_model, data, y, layer_num, k, clustering_type, reduc
             fig2.savefig(os.path.join(path, f"{k}h_{layer_num}layer_{clustering_type}_{views}view_by_node.png"))
         else:
             fig2.savefig(os.path.join(path, f"{layer_num}layer_{clustering_type}_{reduction_type}_{views}view_by_node.png"))
-
-    plt.show()
+    if plot:
+        plt.show()
 
     return sample_graphs, sample_feat
 
