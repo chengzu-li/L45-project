@@ -96,7 +96,6 @@ class Node_GATConv(MessagePassing):
         super(Node_GATConv, self).__init__(aggr=aggr)
 
         self.alpha = nn.Parameter(torch.Tensor([0.5]))
-
         self.lin_a = nn.Linear(out_channels*2, 1)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
@@ -128,12 +127,11 @@ class Node_GATConv(MessagePassing):
         a = torch.div(e, e_sum[edge_index[1]])
 
         s_sim = torch.exp(norm).unsqueeze(1)
-        s_sum = torch.transpose(torch_scatter.scatter(torch.transpose(s_sim, -1, 0), edge_index[1]), -1, 0)
+        s_sum = torch.transpose(torch_scatter.scatter(torch.transpose(s_sim, -1, 0), edge_index[0]), -1, 0)
 
         s = torch.div(s_sim, s_sum[edge_index[1]])
-
-        norm = 0*a + (1-0)*s
-        print(self.alpha)
+        alpha = torch.clamp(self.alpha, min=0.0001, max=0.9999)
+        norm = torch.clamp(alpha, min=0, max=1)*a + (1-alpha)*s
 
         # Step 3: Compute normalization.
 
