@@ -21,13 +21,17 @@ from utilities import *
 from model.l45_Normal_GCN import Customize_GCN
 from model.l45_Novel_Node_GCN import Novel_Node_GCN
 from model.l45_Novel_Edge_GCN import Novel_Edge_GCN
+from model.l45_Novel_Node_CosSim_GCN import Novel_Node_GCN_Sim
+from model.l45_Novel_Node_Att import Novel_Node_GAT
 from model.activation_classifier import *
 
 
 MODEL_DICT = {
     "customize": Customize_GCN,
     "novel_node": Novel_Node_GCN,
-    'novel_edge': Novel_Edge_GCN
+    'novel_edge': Novel_Edge_GCN,
+    'novel_sim': Novel_Node_GCN_Sim,
+    'gat': Novel_Node_GAT
 }
 
 
@@ -187,7 +191,7 @@ if __name__ == "__main__":
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str,
-                        default="customize", choices=['customize', 'novel_node', 'novel_edge'])
+                        default="customize", choices=['customize', 'novel_node', 'novel_edge', 'novel_sim', 'gat'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
                         default=['add', "mean", "median", "var"],
