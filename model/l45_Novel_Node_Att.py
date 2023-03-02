@@ -131,7 +131,9 @@ class Node_GATConv(MessagePassing):
 
         a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
 
-        norm = self.alpha*a + (1-self.alpha)*norm
+        s = torch_scatter.composite.scatter_softmax(norm, edge_index[0])
+
+        norm = self.alpha*a + (1-self.alpha)*s
 
         # Step 3: Compute normalization.
         out = self.propagate(edge_index, x=x, norm=norm)
@@ -184,7 +186,6 @@ class Novel_Node_GAT(nn.Module):
                 s2 = set(tmp[edge_index_tmp[1][index].item()])
                 norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
             self.norm = torch.tensor(norm)
-            self.norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
         for i in range(self.num_layers):
             x = self.layers[i](x, edge_index, self.norm)
             x = F.relu(x)
