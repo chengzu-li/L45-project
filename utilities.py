@@ -106,6 +106,10 @@ def train(model, data, epochs, lr, path, plot=True):
     train_mask = data["train_mask"]
     test_mask = data["test_mask"]
 
+    edge_index_0, edge_index_1 = (torch.cat((edges[0], edges[1])).unsqueeze(0),
+                                  torch.cat((edges[1], edges[0])).unsqueeze(0))
+    edges = torch.cat((edge_index_0, edge_index_1), dim=0)
+
     # iterate for number of epochs
     torch.autograd.set_detect_anomaly(True)
     for epoch in tqdm(range(epochs)):

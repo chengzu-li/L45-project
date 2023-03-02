@@ -96,6 +96,7 @@ class Node_GATConv(MessagePassing):
         super(Node_GATConv, self).__init__(aggr=aggr)
 
         self.alpha = nn.Parameter(torch.Tensor([0.5]))
+        #self.alpha = 0.001
         self.lin_a = nn.Linear(out_channels*2, 1)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
@@ -107,34 +108,32 @@ class Node_GATConv(MessagePassing):
         self.lin.reset_parameters()
         self.bias.data.zero_()
 
+    def softmax(self, x, edge_index):
+        maxes = torch.max(x, 1, keepdim=True)[0]
+        x_exp = torch.exp(x - maxes)
+        x_exp_sum = torch.transpose(torch.transpose(torch_scatter.scatter(x_exp, edge_index), -1, 0)[edge_index],
+                                  -1, 0)
+        probs = x_exp / x_exp_sum
+        return probs.squeeze(0)
+
     def forward(self, x, edge_index, norm):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
-
         # Step 1: Add self-loops to the adjacency matrix.
         edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
-
-
         # Step 2: Linearly transform node feature matrix.
         x = self.lin(x)
 
-
         s = x[edge_index[0]]
         t = x[edge_index[1]]
-        e = torch.exp(F.leaky_relu(self.lin_a(torch.cat((s,t), dim=-1)), negative_slope=0.2))
-        e_sum = torch.transpose(torch_scatter.scatter(torch.transpose(e, -1, 0), edge_index[1]), -1, 0)
 
-        a = torch.div(e, e_sum[edge_index[1]])
+        similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
-        s_sim = torch.exp(norm).unsqueeze(1)
-        s_sum = torch.transpose(torch_scatter.scatter(torch.transpose(s_sim, -1, 0), edge_index[0]), -1, 0)
+        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
 
-        s = torch.div(s_sim, s_sum[edge_index[1]])
-        alpha = torch.clamp(self.alpha, min=0.0001, max=0.9999)
-        norm = torch.clamp(alpha, min=0, max=1)*a + (1-alpha)*s
+        norm = self.alpha*a + (1-self.alpha)*norm
 
         # Step 3: Compute normalization.
-
         out = self.propagate(edge_index, x=x, norm=norm)
 
         # Step 6: Apply a final bias vector.
@@ -185,10 +184,10 @@ class Novel_Node_GAT(nn.Module):
                 s2 = set(tmp[edge_index_tmp[1][index].item()])
                 norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
             self.norm = torch.tensor(norm)
+            self.norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
         for i in range(self.num_layers):
             x = self.layers[i](x, edge_index, self.norm)
             x = F.relu(x)
-
         x = self.linear(x)
 
         return F.log_softmax(x, dim=-1)
