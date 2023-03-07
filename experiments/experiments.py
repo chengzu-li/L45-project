@@ -23,6 +23,8 @@ from model.l45_Novel_Node_GCN import Novel_Node_GCN
 from model.l45_Novel_Edge_GCN import Novel_Edge_GCN
 from model.l45_Novel_Node_CosSim_GCN import Novel_Node_GCN_Sim
 from model.l45_Novel_Node_Att import Novel_Node_GAT
+from model.l45_Novel_Node_Att_StructureN import Novel_Node_GAT_N_Sim
+from model.l45_Base_Att import Node_GAT
 from model.activation_classifier import *
 
 
@@ -31,7 +33,9 @@ MODEL_DICT = {
     "novel_node": Novel_Node_GCN,
     'novel_edge': Novel_Edge_GCN,
     'novel_sim': Novel_Node_GCN_Sim,
-    'gat': Novel_Node_GAT
+    'gat': Node_GAT,
+    'novel_gat': Novel_Node_GAT,
+    'gat_n_sim': Novel_Node_GAT_N_Sim
 }
 
 
@@ -59,143 +63,151 @@ def main(args):
         hyper_args = training_args.get("hyper")
         dataset_args = training_args.get("data")
         model_args = training_args.get("model")
+        seed_args = args.seeds
+
 
         # hyperparameters
-        torch.random.manual_seed(hyper_args.get("seed"))
-        np.random.seed(hyper_args.get("seed"))
-        epochs = hyper_args.get("epochs")
-        lr = hyper_args.get("lr")
+        for seed in seed_args:
+            print(f'Seed: {seed}')
+            torch.random.manual_seed(seed)
+            np.random.seed(seed)
+            epochs = hyper_args.get("epochs")
+            lr = hyper_args.get("lr")
 
-        # data split
-        train_test_split = dataset_args.get("train_test_split")
+            # data split
+            train_test_split = dataset_args.get("train_test_split")
 
-        # Model parameters
-        num_hidden_units = model_args.get("num_hidden_units")
-        num_classes = model_args.get("num_classes")
-        num_layers = model_args.get("num_layers")
+            # Model parameters
+            num_hidden_units = model_args.get("num_hidden_units")
+            num_classes = model_args.get("num_classes")
+            num_layers = model_args.get("num_layers")
 
-        # other parameters
-        k = training_args.get("k")
-        ##############################################################################
+            # other parameters
+            k = training_args.get("k")
+            ##############################################################################
 
-        G, labels = load_syn_data(dataset_name)
-        if dataset_name in ['Twitch', 'Cora']:
-            data = prepare_real_data(G, train_test_split)
-        else:
-            data = prepare_syn_data(G, labels, train_test_split)
-
-        activation_list = ACTIVATION_LIST
-
-        for aggr in aggr_list:
-            torch.random.manual_seed(42)
-            print(f'Aggregator: {aggr}')
-
-            paths = prepare_output_paths(args, dataset_name, k, aggr)
-
-            activation_to_clear = list(activation_list.keys())
-            for key in activation_to_clear:
-                activation_list.pop(key)
-
-            model = model_type(args, num_layers, data["x"].shape[1], num_hidden_units, num_classes, dataset_name, aggr)
-
-            if load_pretrained:
-                print("Loading pretrained model...")
-                model.load_state_dict(torch.load(os.path.join(paths['base'], f"model_{aggr}.pkl")))
-                model.eval()
-
-                with open(os.path.join(paths['base'], f"activations_{aggr}.txt"), 'rb') as file:
-                    activation_list = pickle.loads(file.read())
-
+            G, labels = load_syn_data(dataset_name)
+            if dataset_name in ['Twitch', 'Cora']:
+                data = prepare_real_data(G, train_test_split)
             else:
-                # model.apply(weights_init)
-                print('Training model...')
-                train(model, data, epochs, lr, paths['base'], show_figures)
+                data = prepare_syn_data(G, labels, train_test_split)
 
-            torch.random.manual_seed(42)
-            # TSNE conversion
-            tsne_models = []
-            tsne_data = []
-            print('TSNE reduction...')
-            key = f'layers.{num_layers-1}'
-            layer_num = 0
-            activation = torch.squeeze(activation_list[key]).detach().numpy()
-            tsne_model = TSNE(n_components=2)
-            d = tsne_model.fit_transform(activation)
-            plot_activation_space(d, labels, "TSNE-Reduced", layer_num, paths['TSNE'], "(coloured by labels)",
-                                  plot=show_figures)
+            activation_list = ACTIVATION_LIST
 
-            tsne_models.append(tsne_model)
-            tsne_data.append(d)
+            for aggr in aggr_list:
 
-            # PCA conversion
-            pca_models = []
-            pca_data = []
-            print('PCA reduction...')
-            activation = torch.squeeze(activation_list[key]).detach().numpy()
-            pca_model = PCA(n_components=2)
-            d = pca_model.fit_transform(activation)
-            plot_activation_space(d, labels, "PCA-Reduced", layer_num, paths['PCA'], "(coloured by labels)",
-                                  plot=show_figures)
+                torch.random.manual_seed(seed)
+                print(f'Aggregator: {aggr}')
 
-            pca_models.append(pca_model)
-            pca_data.append(d)
+                paths = prepare_output_paths(args, dataset_name, k, aggr, seed)
 
-            print(f'KMEANS clustering with k={k}...')
-            num_nodes_view = 5
-            num_expansions = 1
-            edges = data['edge_list'].numpy()
+                activation_to_clear = list(activation_list.keys())
+                for key in activation_to_clear:
+                    activation_list.pop(key)
 
-            raw_sample_graphs = []
-            raw_kmeans_models = []
+                model = model_type(args, num_layers, data["x"].shape[1], num_hidden_units, num_classes, dataset_name, aggr)
 
-            activation = torch.squeeze(activation_list[key]).detach().numpy()
-            kmeans_model = KMeans(n_clusters=k, random_state=0)
-            kmeans_model = kmeans_model.fit(activation)
-            pred_labels = kmeans_model.predict(activation)
+                if load_pretrained:
+                    print("Loading pretrained model...")
+                    model.load_state_dict(torch.load(os.path.join(paths['base'], f"model_{aggr}.pkl")))
+                    model.eval()
 
-            plot_clusters(tsne_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_TSNE",
-                          "(TSNE Reduced)", plot=show_figures)
-            plot_clusters(pca_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_PCA",
-                          "(PCA Reduced)", plot=show_figures)
-            sample_graphs, sample_feat = plot_samples(kmeans_model, activation, data["y"], layer_num, k, "KMeans", "raw",
-                                                      num_nodes_view, edges, num_expansions, paths['KMeans'],
-                                                      plot=show_figures)
-            raw_sample_graphs.append(sample_graphs)
-            raw_kmeans_models.append(kmeans_model)
+                    with open(os.path.join(paths['base'], f"activations_{aggr}.txt"), 'rb') as file:
+                        activation_list = pickle.loads(file.read())
 
-            print('Training a decision tree...')
-            classifier_str = "decision_tree"
+                else:
+                    # model.apply(weights_init)
+                    print('Training model...')
+                    train(model, data, epochs, lr, paths['base'], show_figures)
 
-            completeness_scores = []
+                torch.random.manual_seed(42)
+                # TSNE conversion
+                tsne_models = []
+                tsne_data = []
+                print('TSNE reduction...')
+                key = f'layers.{num_layers-1}'
+                layer_num = 0
+                activation = torch.squeeze(activation_list[key]).detach().numpy()
+                tsne_model = TSNE(n_components=2)
+                d = tsne_model.fit_transform(activation)
+                plot_activation_space(d, labels, "TSNE-Reduced", layer_num, paths['TSNE'], "(coloured by labels)",
+                                      plot=show_figures)
 
-            i = 0
-            activation = torch.squeeze(activation_list[key]).detach().numpy()
-            activation_cls = ActivationClassifier(activation, raw_kmeans_models[i], classifier_str, data["x"], data["y"],
-                                                  data["train_mask"], data["test_mask"])
+                tsne_models.append(tsne_model)
+                tsne_data.append(d)
 
-            d = ["Kmeans", "Raw", str(activation_cls.get_classifier_accuracy())]
-            completeness_scores.append(d)
-            print(d)
+                # PCA conversion
+                pca_models = []
+                pca_data = []
+                print('PCA reduction...')
+                activation = torch.squeeze(activation_list[key]).detach().numpy()
+                pca_model = PCA(n_components=2)
+                d = pca_model.fit_transform(activation)
+                plot_activation_space(d, labels, "PCA-Reduced", layer_num, paths['PCA'], "(coloured by labels)",
+                                      plot=show_figures)
 
-            with open(paths['result'], "w") as f:
-                f.write(str(d))
+                pca_models.append(pca_model)
+                pca_data.append(d)
 
-            print('---------------------------')
+                print(f'KMEANS clustering with k={k}...')
+                num_nodes_view = 5
+                num_expansions = 1
+                edges = data['edge_list'].numpy()
+
+                raw_sample_graphs = []
+                raw_kmeans_models = []
+
+                activation = torch.squeeze(activation_list[key]).detach().numpy()
+                kmeans_model = KMeans(n_clusters=k, random_state=0)
+                kmeans_model = kmeans_model.fit(activation)
+                pred_labels = kmeans_model.predict(activation)
+
+                plot_clusters(tsne_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_TSNE",
+                              "(TSNE Reduced)", plot=show_figures)
+                plot_clusters(pca_data[layer_num], pred_labels, "KMeans", k, layer_num, paths['KMeans'], "Raw", "_PCA",
+                              "(PCA Reduced)", plot=show_figures)
+                sample_graphs, sample_feat = plot_samples(kmeans_model, activation, data["y"], layer_num, k, "KMeans", "raw",
+                                                          num_nodes_view, edges, num_expansions, paths['KMeans'],
+                                                          plot=show_figures)
+                raw_sample_graphs.append(sample_graphs)
+                raw_kmeans_models.append(kmeans_model)
+
+                print('Training a decision tree...')
+                classifier_str = "decision_tree"
+
+                completeness_scores = []
+
+                i = 0
+                activation = torch.squeeze(activation_list[key]).detach().numpy()
+                activation_cls = ActivationClassifier(activation, raw_kmeans_models[i], classifier_str, data["x"], data["y"],
+                                                      data["train_mask"], data["test_mask"])
+
+                d = ["Kmeans", "Raw", str(activation_cls.get_classifier_accuracy())]
+                completeness_scores.append(d)
+                print(d)
+
+                with open(paths['result'], "w") as f:
+                    f.write(str(d))
+
+                print('---------------------------')
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', type=str, nargs="*",
-                        default=['Cora', 'Twitch', 'BA_Shapes', 'BA_Grid', 'BA_Community',
-                                 'Tree_Cycle', 'Tree_Grid'],
+                        default=['BA_Shapes', 'BA_Grid', 'BA_Community',
+                                 'Tree_Cycle', 'Tree_Grid', 'Cora', 'Twitch'],
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str,
-                        default="customize", choices=['customize', 'novel_node', 'novel_edge', 'novel_sim', 'gat'])
+                        default="customize", choices=['customize', 'novel_node', 'novel_edge',
+                                                      'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
                         default=['add', "mean", "median", "var"],
-                        choices=['add', 'mean', 'max', 'var', 'std', 'median', 'mul'])
+                        choices=['add', 'mean', 'max', 'std', 'mul', 'div', 'min', 'multi'])
+    parser.add_argument('--seeds', nargs="*",
+                        default=[42])
     # Similarity Measure in Novel_Edge_GCN
     parser.add_argument('--similar_measure', type=str, default=None,
                         choices=['edge', 'edit_dist'])

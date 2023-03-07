@@ -97,9 +97,11 @@ class Node_GATConv(MessagePassing):
 
         self.aggr = aggr
         self.combine_aggr = nn.Linear(out_channels*4, out_channels, bias=False)
+
         self.alpha = nn.Parameter(torch.Tensor([0.5]))
         #self.alpha = 0.001
         self.lin_a = nn.Linear(out_channels*2, 1)
+        self.lin_s = nn.Linear(out_channels * 2, 1)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
         self.bias = nn.Parameter(torch.Tensor(out_channels))
@@ -110,15 +112,7 @@ class Node_GATConv(MessagePassing):
         self.lin.reset_parameters()
         self.bias.data.zero_()
 
-    def softmax(self, x, edge_index):
-        maxes = torch.max(x, 1, keepdim=True)[0]
-        x_exp = torch.exp(x - maxes)
-        x_exp_sum = torch.transpose(torch.transpose(torch_scatter.scatter(x_exp, edge_index), -1, 0)[edge_index],
-                                  -1, 0)
-        probs = x_exp / x_exp_sum
-        return probs.squeeze(0)
-
-    def forward(self, x, edge_index, norm):
+    def forward(self, x, edge_index):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
         # Step 1: Add self-loops to the adjacency matrix.
@@ -127,15 +121,19 @@ class Node_GATConv(MessagePassing):
         x = self.lin(x)
 
         s = x[edge_index[0]]
+        s_aggr = torch_scatter.scatter_add(x[edge_index[0]], edge_index[0], dim=self.node_dim)
         t = x[edge_index[1]]
+        t_aggr = torch_scatter.scatter_add(x[edge_index[1]], edge_index[1], dim=self.node_dim)
 
         similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
         a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
 
-        s = torch_scatter.composite.scatter_softmax(norm, edge_index[0])
+        neighbour_similarity = F.leaky_relu(self.lin_s(torch.cat((s_aggr[edge_index[0]], t_aggr[edge_index[1]]), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
-        norm = self.alpha*a + (1-self.alpha)*s
+        structure = torch_scatter.composite.scatter_softmax(neighbour_similarity, edge_index[0])
+
+        norm = self.alpha*a + (1-self.alpha)*structure
 
         # Step 3: Compute normalization.
         out = self.propagate(edge_index, x=x, norm=norm)
@@ -175,7 +173,7 @@ class Node_GATConv(MessagePassing):
         return norm.view(-1, 1) * x_j
 
 
-class Novel_Node_GAT(nn.Module):
+class Novel_Node_GAT_N_Sim(nn.Module):
     def __init__(self, args, num_layers, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
         """
 
@@ -186,7 +184,7 @@ class Novel_Node_GAT(nn.Module):
             name:
             aggr: Possible choices for aggr: https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#aggregation-operators
         """
-        super(Novel_Node_GAT, self).__init__()
+        super(Novel_Node_GAT_N_Sim, self).__init__()
 
         self.args = args
         self.name = name
@@ -201,19 +199,8 @@ class Novel_Node_GAT(nn.Module):
         self.linear = nn.Linear(num_hidden_features, num_classes)
 
     def forward(self, x, edge_index):
-        if self.norm == []:
-            edge_index_tmp, _ = add_self_loops(edge_index, num_nodes=x.size(0))
-            data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
-            tmp = to_networkx(data, to_undirected=True)
-            norm = []
-            for index in range(len(edge_index_tmp[0])):
-                s1 = set(tmp[edge_index_tmp[0][index].item()])
-                s2 = set(tmp[edge_index_tmp[1][index].item()])
-                norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
-                # norm += [len(s1.intersection(s2)) / len(s1)]
-            self.norm = torch.tensor(norm)
         for i in range(self.num_layers):
-            x = self.layers[i](x, edge_index, self.norm)
+            x = self.layers[i](x, edge_index)
             x = F.relu(x)
         x = self.linear(x)
 

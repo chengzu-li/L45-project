@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
 import networkx as nx
+import torch_scatter
 
 
 from torch_geometric.typing import Adj, Size, SparseTensor
@@ -40,7 +41,10 @@ class Edge_GCNConv(MessagePassing):
             out_channels:
             aggr:
         """
-        super(Edge_GCNConv, self).__init__(aggr=aggr)
+        super(Edge_GCNConv, self).__init__()
+
+        self.aggr = aggr
+        self.combine_aggr = nn.Linear(out_channels*4, out_channels, bias=False)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
         self.bias = nn.Parameter(torch.Tensor(out_channels))
@@ -71,6 +75,29 @@ class Edge_GCNConv(MessagePassing):
         out += self.bias
 
         return out
+
+    def aggregate(self, inputs, index):
+        if self.aggr == 'max':
+            return torch_scatter.scatter_max(inputs, index, dim=self.node_dim)[0]
+        elif self.aggr == 'mean':
+            return torch_scatter.scatter_mean(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'add':
+            return torch_scatter.scatter_add(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'min':
+            return torch_scatter.scatter_min(inputs, index, dim=self.node_dim)[0]
+        elif self.aggr == 'div':
+            return torch_scatter.scatter_div(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'mul':
+            return torch_scatter.scatter_mul(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'std':
+            return torch_scatter.scatter_std(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'multi':
+            mean = torch_scatter.scatter_mean(inputs, index, dim=self.node_dim)
+            add = torch_scatter.scatter_add(inputs, index, dim=self.node_dim)
+            # std = torch_scatter.scatter_std(inputs, index, dim=self.node_dim)
+            min = torch_scatter.scatter_min(inputs, index, dim=self.node_dim)[0]
+            max = torch_scatter.scatter_max(inputs, index, dim=self.node_dim)[0]
+            return self.combine_aggr(torch.cat((mean, add, min, max), dim=-1))
 
     def message(self, x_j, norm):
         # x_j has shape [E, out_channels]

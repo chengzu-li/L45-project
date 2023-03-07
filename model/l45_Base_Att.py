@@ -93,7 +93,10 @@ class Node_GATConv(MessagePassing):
             out_channels:
             aggr:
         """
-        super(Node_GATConv, self).__init__(aggr=aggr)
+        super(Node_GATConv, self).__init__()
+
+        self.aggr = aggr
+        self.combine_aggr = nn.Linear(out_channels*4, out_channels, bias=False)
 
         self.sim_c = nn.Parameter(torch.Tensor([0.5]))
 
@@ -122,10 +125,10 @@ class Node_GATConv(MessagePassing):
 
         s = x[edge_index[0]]
         t = x[edge_index[1]]
-        e = torch.exp(F.leaky_relu(self.lin_a(torch.cat((s,t), dim=-1)), negative_slope=0.2))
-        e_sum = torch.transpose(torch_scatter.scatter(torch.transpose(e, -1, 0), edge_index[1]), -1, 0)
 
-        a = torch.div(e, e_sum[edge_index[1]])
+        similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
+
+        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
 
         # Step 3: Compute normalization.
 
@@ -136,6 +139,29 @@ class Node_GATConv(MessagePassing):
 
         return out
 
+    def aggregate(self, inputs, index):
+        if self.aggr == 'max':
+            return torch_scatter.scatter_max(inputs, index, dim=self.node_dim)[0]
+        elif self.aggr == 'mean':
+            return torch_scatter.scatter_mean(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'add':
+            return torch_scatter.scatter_add(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'min':
+            return torch_scatter.scatter_min(inputs, index, dim=self.node_dim)[0]
+        elif self.aggr == 'div':
+            return torch_scatter.scatter_div(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'mul':
+            return torch_scatter.scatter_mul(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'std':
+            return torch_scatter.scatter_std(inputs, index, dim=self.node_dim)
+        elif self.aggr == 'multi':
+            mean = torch_scatter.scatter_mean(inputs, index, dim=self.node_dim)
+            add = torch_scatter.scatter_add(inputs, index, dim=self.node_dim)
+            # std = torch_scatter.scatter_std(inputs, index, dim=self.node_dim)
+            min = torch_scatter.scatter_min(inputs, index, dim=self.node_dim)[0]
+            max = torch_scatter.scatter_max(inputs, index, dim=self.node_dim)[0]
+            return self.combine_aggr(torch.cat((mean, add, min, max), dim=-1))
+
     def message(self, x_j, norm):
         # x_j has shape [E, out_channels]
 
@@ -143,7 +169,7 @@ class Node_GATConv(MessagePassing):
         return norm.view(-1, 1) * x_j
 
 
-class Novel_Node_GAT(nn.Module):
+class Node_GAT(nn.Module):
     def __init__(self, args, num_layers, num_in_features, num_hidden_features, num_classes, name, aggr="max"):
         """
 
@@ -154,9 +180,9 @@ class Novel_Node_GAT(nn.Module):
             name:
             aggr: Possible choices for aggr: https://pytorch-geometric.readthedocs.io/en/latest/modules/nn.html#aggregation-operators
         """
-        super(Novel_Node_GAT, self).__init__()
+        super(Node_GAT, self).__init__()
 
-        self.args = args
+        self.aggr = aggr
         self.name = name
         self.num_layers = num_layers
         self.norm = []

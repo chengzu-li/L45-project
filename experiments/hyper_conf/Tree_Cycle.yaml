@@ -1,6 +1,6 @@
 hyper:
   seed: 42
-  epochs: 25000
+  epochs: 12000
   lr: 0.001
 data:
   train_test_split: 0.8
