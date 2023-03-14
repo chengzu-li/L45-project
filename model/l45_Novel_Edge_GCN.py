@@ -153,9 +153,12 @@ class Novel_Edge_GCN(nn.Module):
                     norm += [len(edge_i.intersection(edge_j)) / len(edge_i.union(edge_j))]
                 elif self.args.similar_measure == "edit_dist":
                     # edit_dist means the graph similarity measures based on graph edit distance
-                    # TODO: come up with a graph similarity measure
-                    raise NotImplementedError(f"Edit Distance measure not implemented. ")
-                    pass
+                    # TODO: come up with a graph similarity measure,
+                    #  eg. 1 / (1 + edit_dist)
+                    edit_dist = nx.graph_edit_distance(sg_i, sg_j)
+                    norm += [1 / (1 + edit_dist)]
+                    # raise NotImplementedError(f"Edit Distance measure not implemented. ")
+                    # pass
 
             self.norm = torch.tensor(norm)
         for i in range(self.num_layers):
