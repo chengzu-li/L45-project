@@ -197,7 +197,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', type=str, nargs="*",
                         default=['BA_Shapes', 'BA_Community',
-                                 'Tree_Cycle', 'Tree_Grid', 'Cora'],
+                                 'Tree_Cycle', 'Cora'],     # TODO: one more real dataset
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str, nargs="*",
@@ -207,7 +207,7 @@ if __name__ == "__main__":
                                  'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
-                        default=['add', 'mean', 'max', 'min', 'multi'],
+                        default=['add', 'mean', 'max', 'multi'],
                         choices=['add', 'mean', 'max', 'std', 'mul', 'div', 'min', 'multi'])
     # Pick one or two and use them on novel designed models
     parser.add_argument('--seeds', nargs="*",

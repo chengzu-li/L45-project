@@ -154,12 +154,15 @@ def train(model, data, epochs, lr, path, plot=True):
     if plot:
         plt.show()
 
-    plt.plot(train_losses, label="Train Loss")
-    plt.plot(test_losses, label="Testing Loss")
-    plt.title(f"Loss of {model.name} Model during Training")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.legend(loc='upper right')
+    # loss figure
+    fig = plt.figure()
+    loss_fig = fig.add_subplot()
+    loss_fig.plot(train_losses, label="Train Loss")
+    loss_fig.plot(test_losses, label="Testing Loss")
+    loss_fig.set_title(f"Loss of {model.name} Model during Training")
+    loss_fig.set_xlabel("Epoch")
+    loss_fig.set_ylabel("Loss")
+    loss_fig.legend(loc='upper right')
     plt.savefig(os.path.join(path, f"model_loss_plot.png"))
     if plot:
         plt.show()
