@@ -193,8 +193,8 @@ class Novel_Node_GCN(nn.Module):
                 s2 = set(tmp[edge_index_tmp[1][index].item()])
                 norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
             norm = torch.tensor(norm)
-            norm_tmp = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
-            self.norm = norm_tmp
+            # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
+            self.norm = norm
         for i in range(self.num_layers):
             x = self.layers[i](x, edge_index, self.norm)
             x = F.relu(x)

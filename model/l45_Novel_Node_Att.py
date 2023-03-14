@@ -133,7 +133,7 @@ class Node_GATConv(MessagePassing):
 
         a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
 
-        s = torch_scatter.composite.scatter_softmax(norm, edge_index[0])
+        # s = torch_scatter.composite.scatter_softmax(norm, edge_index[0])
 
         norm = self.alpha*a + (1-self.alpha)*s
 

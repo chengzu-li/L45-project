@@ -100,7 +100,7 @@ class Node_GATConv(MessagePassing):
 
         self.alpha = nn.Parameter(torch.Tensor([0.5]))
         #self.alpha = 0.001
-        self.lin_a = nn.Linear(out_channels*2, 1)
+        self.lin_a = nn.Linear(out_channels * 2, 1)
         self.lin_s = nn.Linear(out_channels * 2, 1)
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
@@ -120,9 +120,9 @@ class Node_GATConv(MessagePassing):
         # Step 2: Linearly transform node feature matrix.
         x = self.lin(x)
 
-        s = x[edge_index[0]]
+        s = x[edge_index[0]] * self.norm
         s_aggr = torch_scatter.scatter_add(x[edge_index[0]], edge_index[0], dim=self.node_dim)
-        t = x[edge_index[1]]
+        t = x[edge_index[1]] * self.norm
         t_aggr = torch_scatter.scatter_add(x[edge_index[1]], edge_index[1], dim=self.node_dim)
 
         similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
@@ -199,6 +199,18 @@ class Novel_Node_GAT_N_Sim(nn.Module):
         self.linear = nn.Linear(num_hidden_features, num_classes)
 
     def forward(self, x, edge_index):
+        if self.norm == []:
+            edge_index_tmp, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+            data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
+            tmp = to_networkx(data, to_undirected=True)
+            norm = []
+            for index in range(len(edge_index_tmp[0])):
+                s1 = set(tmp[edge_index_tmp[0][index].item()])
+                s2 = set(tmp[edge_index_tmp[1][index].item()])
+                norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
+            norm = torch.tensor(norm)
+            # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
+            self.norm = norm
         for i in range(self.num_layers):
             x = self.layers[i](x, edge_index)
             x = F.relu(x)
