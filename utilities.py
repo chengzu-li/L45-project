@@ -112,6 +112,8 @@ def train(model, data, epochs, lr, path, plot=True):
 
     # iterate for number of epochs
     torch.autograd.set_detect_anomaly(True)
+    best_loss = None
+    strike = 0
     for epoch in tqdm(range(epochs)):
             # set mode to training
             model.train()
@@ -131,6 +133,19 @@ def train(model, data, epochs, lr, path, plot=True):
                 # get accuracy
                 train_acc = test(model, x, y, edges, train_mask)
                 test_acc = test(model, x, y, edges, test_mask)
+
+            if epoch % 20 == 0:
+                if best_loss == None or best_loss >= test_loss:
+                    strike = 0
+                    best_loss = test_loss
+                    best_train_acc = train_acc
+                    best_test_acc = test_acc
+                    print('Saving models...')
+                    torch.save(model.state_dict(), os.path.join(path, "model.pth"))
+                else:
+                    strike += 1
+                    if strike == 7:
+                        break
 
             ## add to list and print
             train_accuracies.append(train_acc)
@@ -168,13 +183,13 @@ def train(model, data, epochs, lr, path, plot=True):
         plt.show()
 
     # save model
-    torch.save(model.state_dict(), os.path.join(path, "model.pkl"))
+    # torch.save(model.state_dict(), os.path.join(path, "model.pkl"))
 
-    with open(os.path.join(path, "activations.txt"), 'wb') as file:
-        pickle.dump(ACTIVATION_LIST, file)
+    # with open(os.path.join(path, "activations.txt"), 'wb') as file:
+    #     pickle.dump(ACTIVATION_LIST, file)
 
     with open(os.path.join(path, "accuracy.txt"), 'wb') as file:
-        result = [f"train_acc: {train_acc}", f"test_acc: {test_acc}"]
+        result = [f"train_acc: {best_train_acc}", f"test_acc: {best_test_acc}"]
         pickle.dump(str(result), file)
 
 def prepare_output_paths(dataset_name, k, aggr, model_name, seed):

@@ -121,7 +121,19 @@ def main(args):
                         print('Training model...')
                         train(model, data, epochs, lr, paths['base'], show_figures)
 
-                    torch.random.manual_seed(42)
+                    x = data["x"]
+                    edges = data["edges"]
+                    y = data["y"]
+                    train_mask = data["train_mask"]
+                    test_mask = data["test_mask"]
+
+                    model = model_type(args, num_layers, data["x"].shape[1], num_hidden_units, num_classes, dataset_name, aggr)
+                    model.load_state_dict(torch.load(os.path.join(paths['base'], "model.pth")))
+
+                    _ = test(model, x, y, edges, train_mask)
+
+                    torch.random.manual_seed(seed)
+
                     # TSNE conversion
                     tsne_models = []
                     tsne_data = []
