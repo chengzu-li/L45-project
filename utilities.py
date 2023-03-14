@@ -174,15 +174,15 @@ def train(model, data, epochs, lr, path, plot=True):
         result = [f"train_acc: {train_acc}", f"test_acc: {test_acc}"]
         pickle.dump(str(result), file)
 
-def prepare_output_paths(args, dataset_name, k, aggr, seed):
+def prepare_output_paths(dataset_name, k, aggr, model_name, seed):
     """
     Setup paths
     :param dataset_name: name of the dataset we are using
     :param k: number of cluster
     :return: dict with different path that you can use
     """
-    if args.model_type != "customized":
-        path = f"output-{args.model_type}/{dataset_name}/{aggr}/{seed}"
+    if model_name != "customized":
+        path = f"output-{model_name}/{dataset_name}/{aggr}/{seed}"
     else:
         path = f"output/{dataset_name}/{aggr}/{seed}"
     path_tsne = os.path.join(path, "TSNE")
