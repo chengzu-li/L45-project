@@ -76,11 +76,11 @@ class Node_GATConv(MessagePassing):
 
         similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
-        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
+        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[1])
 
         neighbour_similarity = F.leaky_relu(self.lin_s(torch.cat((s_aggr[edge_index[0]], t_aggr[edge_index[1]]), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
-        structure = torch_scatter.composite.scatter_softmax(neighbour_similarity, edge_index[0])
+        structure = torch_scatter.composite.scatter_softmax(neighbour_similarity, edge_index[1])
 
         norm = self.alpha*a + (1-self.alpha)*structure
 

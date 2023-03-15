@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import pickle
 import networkx as nx
 
+from torch_geometric.utils import scatter
+
 
 from torch_geometric.typing import Adj, Size, SparseTensor
 from torch_geometric.data import Data
@@ -18,7 +20,7 @@ import torch_scatter
 
 from torch import Tensor
 
-from torch_geometric.nn import MessagePassing, GCNConv, DenseGCNConv, GINConv, GraphConv
+from torch_geometric.nn import MessagePassing, GCNConv, DenseGCNConv, GINConv, GraphConv, GATConv
 from torch_geometric.utils import add_self_loops, degree, to_dense_adj, convert
 
 from typing import (
@@ -77,7 +79,7 @@ class Node_GATConv(MessagePassing):
 
         similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
-        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[0])
+        a = torch_scatter.composite.scatter_softmax(similarity, edge_index[1])
 
         # Step 3: Compute normalization.
 
@@ -88,13 +90,16 @@ class Node_GATConv(MessagePassing):
 
         return out
 
-    def aggregate(self, inputs, index):
+    def aggregate(self, inputs: Tensor, index: Tensor,
+                  ptr: Optional[Tensor] = None,
+                  dim_size: Optional[int] = None) -> Tensor:
         if self.aggr == 'max':
             return torch_scatter.scatter_max(inputs, index, dim=self.node_dim)[0]
         elif self.aggr == 'mean':
             return torch_scatter.scatter_mean(inputs, index, dim=self.node_dim)
         elif self.aggr == 'add':
             return torch_scatter.scatter_add(inputs, index, dim=self.node_dim)
+            #return scatter(inputs, index, dim=0, dim_size=dim_size)
         elif self.aggr == 'min':
             return torch_scatter.scatter_min(inputs, index, dim=self.node_dim)[0]
         elif self.aggr == 'div':
@@ -139,6 +144,11 @@ class Node_GAT(nn.Module):
         self.layers = [Node_GATConv(num_in_features, num_hidden_features, aggr=aggr)]
         self.layers += [Node_GATConv(num_hidden_features, num_hidden_features, aggr=aggr) for _ in range(num_layers-1)]
         self.layers = nn.ModuleList(self.layers)
+
+        # self.layers = [GATConv(num_in_features, num_hidden_features)]
+        # self.layers += [GATConv(num_hidden_features, num_hidden_features) for _ in
+        #                 range(num_layers - 1)]
+        # self.layers = nn.ModuleList(self.layers)
 
         # linear layers
         self.linear = nn.Linear(num_hidden_features, num_classes)
