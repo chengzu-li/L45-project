@@ -213,17 +213,16 @@ if __name__ == "__main__":
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str, nargs="*",
-                        default=['novel_node',
-                                 'novel_sim', 'gat', 'novel_gat'],
+                        default=['customize', 'gat'],
                         choices=['customize', 'novel_node', 'novel_edge',
                                  'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
-                        default=['add', 'mean', 'max', 'multi'],
+                        default=['add', 'mean', 'max', 'min', 'multi'],
                         choices=['add', 'mean', 'max', 'std', 'mul', 'div', 'min', 'multi'])
     # Pick one or two and use them on novel designed models
     parser.add_argument('--seeds', nargs="*",
-                        default=[42, 0, 1])
+                        default=[42])
     # Similarity Measure in Novel_Edge_GCN
     parser.add_argument('--similar_measure', type=str, default='edge',
                         choices=['edge', 'edit_dist'])
