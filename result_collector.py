@@ -2,6 +2,7 @@ import os
 import argparse
 import json
 import pandas as pd
+import numpy as np
 
 
 def collect_results(args, model_names, experiment_dir, task_names, aggrs):
@@ -23,6 +24,8 @@ def collect_results(args, model_names, experiment_dir, task_names, aggrs):
                         except:
                             pass
 
+                seed_acc = []
+                seed_comp = []
                 for seed in random_seeds:
                     result_dir = os.path.join(searching_dir, seed)
                     acc_file = os.path.join(result_dir, "accuracy.txt")
@@ -37,12 +40,15 @@ def collect_results(args, model_names, experiment_dir, task_names, aggrs):
                     with open(completion_file, 'r') as f:
                         comp = f.readline()
                         comp = float(comp.split(",")[-1].split(']')[0].strip("' "))
-                    final_results = {
-                        "test_acc": acc[-1],
-                        "completion_score": comp
-                    }
+                    seed_acc.append(acc[-1])
+                    seed_comp.append(comp)
 
-                    model_result[task_name][aggr] = final_results
+                final_results = {
+                    "test_acc": "{:.4f}+-{:.4f}".format(float(np.mean(seed_acc)), float(np.std(seed_acc))),
+                    "completion_score": "{:.4f}+-{:.4f}".format(float(np.mean(seed_comp)), float(np.std(seed_comp)))
+                }
+
+                model_result[task_name][aggr] = final_results
 
         # convert to dataframe
         result_dict = {}
@@ -60,7 +66,10 @@ def collect_results(args, model_names, experiment_dir, task_names, aggrs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_names", nargs="*", default=['customize'], choices=['customize', 'gat'])
+    parser.add_argument("--model_names", nargs="*",
+                        default=['customize'],
+                        choices=['customize', 'novel_node', 'novel_edge',
+                                 'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
     parser.add_argument("--task_names", nargs="*",
                         default=['BA_Shapes', 'BA_Community', 'Tree_Cycle', 'Cora'],
                         choices=['BA_Shapes', 'BA_Community', 'Tree_Cycle', 'Cora'])
