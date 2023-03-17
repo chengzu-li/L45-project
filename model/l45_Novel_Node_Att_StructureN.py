@@ -61,7 +61,7 @@ class Node_GATConv(MessagePassing):
         self.lin.reset_parameters()
         self.bias.data.zero_()
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, norm):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
         # Step 1: Add self-loops to the adjacency matrix.
@@ -69,9 +69,9 @@ class Node_GATConv(MessagePassing):
         # Step 2: Linearly transform node feature matrix.
         x = self.lin(x)
 
-        s = x[edge_index[0]] * self.norm
+        s = x[edge_index[0]] * norm.unsqueeze(-1)
         s_aggr = torch_scatter.scatter_add(x[edge_index[0]], edge_index[0], dim=self.node_dim)
-        t = x[edge_index[1]] * self.norm
+        t = x[edge_index[1]] * norm.unsqueeze(-1)
         t_aggr = torch_scatter.scatter_add(x[edge_index[1]], edge_index[1], dim=self.node_dim)
 
         similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
@@ -161,7 +161,7 @@ class Novel_Node_GAT_N_Sim(nn.Module):
             # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
             self.norm = norm
         for i in range(self.num_layers):
-            x = self.layers[i](x, edge_index)
+            x = self.layers[i](x, edge_index, self.norm)
             x = F.relu(x)
         x = self.linear(x)
 
