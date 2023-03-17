@@ -74,7 +74,8 @@ class Node_GATConv(MessagePassing):
         t = x[edge_index[1]] * norm.unsqueeze(-1)
         t_aggr = torch_scatter.scatter_add(x[edge_index[1]], edge_index[1], dim=self.node_dim)
 
-        similarity = F.leaky_relu(self.lin_a(torch.cat((s, t), dim=-1)), negative_slope=0.2).squeeze(1).unsqueeze(0)
+        concat_st = torch.cat((s, t), dim=-1)
+        similarity = F.leaky_relu(self.lin_a(concat_st), negative_slope=0.2).squeeze(1).unsqueeze(0)
 
         a = torch_scatter.composite.scatter_softmax(similarity, edge_index[1])
 
@@ -153,10 +154,18 @@ class Novel_Node_GAT_N_Sim(nn.Module):
             data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
             tmp = to_networkx(data, to_undirected=True)
             norm = []
-            for index in range(len(edge_index_tmp[0])):
-                s1 = set(tmp[edge_index_tmp[0][index].item()])
-                s2 = set(tmp[edge_index_tmp[1][index].item()])
-                norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
+            if self.args.norm_in_gat_n_sim == 'novel_node':
+                for index in range(len(edge_index_tmp[0])):
+                    s1 = set(tmp[edge_index_tmp[0][index].item()])
+                    s2 = set(tmp[edge_index_tmp[1][index].item()])
+                    norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
+            elif self.args.norm_in_gat_n_sim == "1":
+                norm = [1] * len(edge_index_tmp[0])
+            elif self.args.norm_in_gat_n_sim == "gcn":
+                for index in range(len(edge_index_tmp[0])):
+                    s1 = set(tmp[edge_index_tmp[0][index].item()])
+                    s2 = set(tmp[edge_index_tmp[1][index].item()])
+                    norm += [float(1 / (np.sqrt(len(s1) * len(s2))))]
             norm = torch.tensor(norm)
             # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
             self.norm = norm

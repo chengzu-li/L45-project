@@ -33,7 +33,7 @@ from typing import (
 
 
 class Node_GCNConv_Sim(MessagePassing):
-    def __init__(self, in_channels, out_channels, aggr='max'):
+    def __init__(self, in_channels, out_channels, aggr='max', similar_measure='cosine'):
         """
         This is adopted from the GCN implemented by MessagePassing network in torch_geometric
         Args:
@@ -50,6 +50,8 @@ class Node_GCNConv_Sim(MessagePassing):
 
         self.lin = nn.Linear(in_channels, out_channels, bias=False)
         self.bias = nn.Parameter(torch.Tensor(out_channels))
+
+        self.similar_measure = similar_measure
 
         self.reset_parameters()
 
@@ -68,10 +70,14 @@ class Node_GCNConv_Sim(MessagePassing):
         x = self.lin(x)
 
         # Step 3: Compute normalization.
-        cos = nn.CosineSimilarity(dim=-1, eps=1e-6)
         s = x[edge_index[0]]
         t = x[edge_index[1]]
-        norm_sim = cos(s, t)
+        if self.similar_measure == "cosine":
+            cos = nn.CosineSimilarity(dim=-1, eps=1e-6)
+            norm_sim = cos(s, t)
+        else:
+            norm_sim = nn.functional.pairwise_distance(s, t, p=2)
+            norm_sim = 1 / (1 + norm_sim)
         norm = (1-self.sim_c)*norm + self.sim_c*norm_sim
         # Step 4-5: Start propagating messages.
         out = self.propagate(edge_index, x=x, norm=norm)
@@ -129,8 +135,12 @@ class Novel_Node_GCN_Sim(nn.Module):
         self.num_layers = num_layers
         self.norm = []
 
-        self.layers = [Node_GCNConv_Sim(num_in_features, num_hidden_features, aggr=aggr)]
-        self.layers += [Node_GCNConv_Sim(num_hidden_features, num_hidden_features, aggr=aggr) for _ in range(num_layers-1)]
+        self.layers = [Node_GCNConv_Sim(num_in_features, num_hidden_features,
+                                        aggr=aggr,
+                                        similar_measure=self.args.node_similar_measure)]
+        self.layers += [Node_GCNConv_Sim(num_hidden_features, num_hidden_features,
+                                         aggr=aggr,
+                                         similar_measure=self.args.node_similar_measure) for _ in range(num_layers-1)]
         self.layers = nn.ModuleList(self.layers)
 
         # linear layers

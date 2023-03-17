@@ -192,7 +192,7 @@ def train(model, data, epochs, lr, path, plot=True):
         result = [f"train_acc: {best_train_acc}", f"test_acc: {best_test_acc}"]
         pickle.dump(str(result), file)
 
-def prepare_output_paths(dataset_name, k, aggr, model_name, seed):
+def prepare_output_paths(args, dataset_name, k, aggr, model_name, seed):
     """
     Setup paths
     :param dataset_name: name of the dataset we are using
@@ -201,6 +201,12 @@ def prepare_output_paths(dataset_name, k, aggr, model_name, seed):
     """
     if model_name != "customized":
         path = f"output-{model_name}/{dataset_name}/{aggr}/{seed}"
+        if model_name == 'novel_edge' and args.similar_measure == "edit_dist":
+            path = f"output-{model_name}-edit_dist/{dataset_name}/{aggr}/{seed}"
+        elif model_name == 'novel_sim' and args.node_similar_measure == 'eu_dist':
+            path = f"output-{model_name}-eu_dist/{dataset_name}/{aggr}/{seed}"
+        elif model_name == 'gat_n_sim' and args.norm_in_gat_n_sim != "novel_node":
+            path = f"output-{model_name}-{args.norm_in_gat_n_sim}/{dataset_name}/{aggr}/{seed}"
     else:
         path = f"output/{dataset_name}/{aggr}/{seed}"
     path_tsne = os.path.join(path, "TSNE")

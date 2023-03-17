@@ -114,6 +114,7 @@ class Customize_GCN(nn.Module):
     def forward(self, x, edge_index):
         for i in range(self.num_layers):
             x = self.layers[i](x, edge_index)
+            # TODO: see whether there are values below 0?
             x = F.relu(x)
 
         x = self.linear(x)

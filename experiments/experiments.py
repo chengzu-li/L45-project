@@ -104,7 +104,7 @@ def main(args):
                     torch.random.manual_seed(seed)
                     print(f'Aggregator: {aggr}')
 
-                    paths = prepare_output_paths(dataset_name, k, aggr, model_name, seed)
+                    paths = prepare_output_paths(args, dataset_name, k, aggr, model_name, seed)
 
                     activation_to_clear = list(activation_list.keys())
                     for key in activation_to_clear:
@@ -230,6 +230,12 @@ if __name__ == "__main__":
     # Similarity Measure in Novel_Edge_GCN
     parser.add_argument('--similar_measure', type=str, default='edge',
                         choices=['edge', 'edit_dist'])
+    # Similarity Measure in Novel_sim
+    parser.add_argument('--node_similar_measure', type=str, default='cosine',
+                        choices=['cosine', 'eu_dist'])
+    # Similarity Measure in Novel_sim
+    parser.add_argument('--norm_in_gat_n_sim', type=str, default='novel_node',
+                        choices=['novel_node', '1', 'gcn'])
     # FIXME: max, std, mul don't work on my laptop...
     parser.add_argument('--hyperparam', type=str,
                         default="hyper_conf/")
