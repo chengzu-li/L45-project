@@ -49,13 +49,15 @@ class Node_GCNConv(MessagePassing):
         self.combine_aggr = nn.Linear(out_channels*4, out_channels, bias=False)
         self.aggr = aggr
 
+        self.norm = []
+
         self.reset_parameters()
 
     def reset_parameters(self):
         self.lin.reset_parameters()
         self.bias.data.zero_()
 
-    def forward(self, x, edge_index, norm):
+    def forward(self, x, edge_index):
         # x has shape [N, in_channels]
         # edge_index has shape [2, E]
 
@@ -69,7 +71,7 @@ class Node_GCNConv(MessagePassing):
 
 
         # Step 4-5: Start propagating messages.
-        out = self.propagate(edge_index, x=x, norm=norm)
+        out = self.propagate(edge_index, x=x, norm=self.norm)
 
         # Step 6: Apply a final bias vector.
         out += self.bias
@@ -119,6 +121,7 @@ class Novel_Node_GCN(nn.Module):
         """
         super(Novel_Node_GCN, self).__init__()
 
+        self.k = 1
         self.args = args
         self.name = name
         self.num_layers = num_layers
@@ -132,20 +135,26 @@ class Novel_Node_GCN(nn.Module):
         self.linear = nn.Linear(num_hidden_features, num_classes)
 
     def forward(self, x, edge_index):
-        if self.norm == []:
-            edge_index_tmp, _ = add_self_loops(edge_index, num_nodes=x.size(0))
-            data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
-            tmp = to_networkx(data, to_undirected=True)
-            norm = []
-            for index in range(len(edge_index_tmp[0])):
-                s1 = set(tmp[edge_index_tmp[0][index].item()])
-                s2 = set(tmp[edge_index_tmp[1][index].item()])
-                norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
-            norm = torch.tensor(norm)
-            # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
-            self.norm = norm
         for i in range(self.num_layers):
-            x = self.layers[i](x, edge_index, self.norm)
+            if self.layers[i].norm == []:
+                edge_index_tmp, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+                data = Data(edge_index=edge_index_tmp, num_nodes=x.size(0))
+                tmp = to_networkx(data, to_undirected=True)
+                norm = []
+                for index in range(len(edge_index_tmp[0])):
+                    s1 = set(tmp[edge_index_tmp[0][index].item()])
+                    s2 = set(tmp[edge_index_tmp[1][index].item()])
+                    for j in range(min(i, self.k-1)):
+                        for h in list(s1):
+                            s1.update([l for l in tmp[h]])
+                        for h in list(s1):
+                            s2.update([l for l in tmp[h]])
+                    norm += [len(s1.intersection(s2)) / len(s1.union(s2))]
+                norm = torch.tensor(norm)
+                # norm = torch_scatter.composite.scatter_softmax(norm, edge_index_tmp[0])
+                self.layers[i].norm = norm
+        for i in range(self.num_layers):
+            x = self.layers[i](x, edge_index)
             x = F.relu(x)
 
         x = self.linear(x)

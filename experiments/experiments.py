@@ -24,6 +24,8 @@ from model.l45_Novel_Edge_GCN import Novel_Edge_GCN
 from model.l45_Novel_Node_CosSim_GCN import Novel_Node_GCN_Sim
 from model.l45_Novel_Node_Att import Novel_Node_GAT
 from model.l45_Novel_Node_Att_StructureN import Novel_Node_GAT_N_Sim
+from model.l45_Novel_Node_GCN_balanced import Novel_Node_GCN_balanced
+from model.l45_Novel_Node_Att_balanced import Novel_Node_GAT_balanced
 from model.l45_Base_Att import Node_GAT
 from model.activation_classifier import *
 
@@ -33,9 +35,11 @@ MODEL_DICT = {
     "novel_node": Novel_Node_GCN,
     'novel_edge': Novel_Edge_GCN,
     'novel_sim': Novel_Node_GCN_Sim,
+    'novel_balanced': Novel_Node_GCN_balanced,
     'gat': Node_GAT,
     'novel_gat': Novel_Node_GAT,
-    'gat_n_sim': Novel_Node_GAT_N_Sim
+    'gat_n_sim': Novel_Node_GAT_N_Sim,
+    'novel_gat_balanced': Novel_Node_GAT_balanced,
 }
 
 
@@ -213,12 +217,12 @@ if __name__ == "__main__":
                         choices=['BA_Shapes', 'BA_Grid', 'BA_Community',
                                  'Tree_Cycle', 'Tree_Grid', 'Twitch', 'Cora'])
     parser.add_argument('--model_type', type=str, nargs="*",
-                        default=['customize', 'gat'],
+                        default=['novel_node'],
                         choices=['customize', 'novel_node', 'novel_edge',
-                                 'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
+                                 'novel_sim', 'gat', 'novel_gat', 'gat_n_sim', 'novel_balanced'])
     parser.add_argument('--load_pretrained', action='store_true')
     parser.add_argument('--aggr', nargs="*",
-                        default=['add', 'mean', 'max', 'min', 'multi'],
+                        default=['add', 'multi'],
                         choices=['add', 'mean', 'max', 'std', 'mul', 'div', 'min', 'multi'])
     # Pick one or two and use them on novel designed models
     parser.add_argument('--seeds', nargs="*",
