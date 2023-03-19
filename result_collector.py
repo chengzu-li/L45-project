@@ -67,9 +67,10 @@ def collect_results(args, model_names, experiment_dir, task_names, aggrs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_names", nargs="*",
-                        default=['customize'],
-                        choices=['customize', 'novel_node', 'novel_edge',
-                                 'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
+                        default=['customize'])
+    # Feel free to specify the model_names with other customized settings, such as "novel_edge-edit_dist"
+                        # choices=['customize', 'novel_node', 'novel_edge', 'novel_edge-edit_dist', 'novel_sim-eu_dist'
+                        #          'novel_sim', 'gat', 'novel_gat', 'gat_n_sim'])
     parser.add_argument("--task_names", nargs="*",
                         default=['BA_Shapes', 'BA_Community', 'Tree_Cycle', 'Cora'],
                         choices=['BA_Shapes', 'BA_Community', 'Tree_Cycle', 'Cora'])
