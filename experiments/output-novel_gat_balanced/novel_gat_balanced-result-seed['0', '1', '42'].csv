@@ -1,0 +1,3 @@
+,Aggr,BA_Shapes-acc,BA_Shapes-completion,BA_Community-acc,BA_Community-completion,Tree_Cycle-acc,Tree_Cycle-completion,Cora-acc,Cora-completion
+0,add,0.9904+-0.0091,0.8715+-0.0404,0.6781+-0.0156,0.7707+-0.0144,0.9401+-0.0254,0.9379+-0.0214,0.8760+-0.0177,0.7567+-0.0039
+1,multi,0.9857+-0.0061,0.9741+-0.0116,0.9560+-0.0073,0.7036+-0.0655,0.9943+-0.0046,0.9905+-0.0097,0.8759+-0.0205,0.8033+-0.0151
