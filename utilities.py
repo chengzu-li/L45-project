@@ -159,12 +159,14 @@ def train(model, data, epochs, lr, path, plot=True):
             # if train_acc >= 0.95 and test_acc >= 0.95:
             #     break
     # plut accuracy graph
-    plt.plot(train_accuracies, label="Train Accuracy")
-    plt.plot(test_accuracies, label="Testing Accuracy")
-    plt.title(f"Accuracy of {model.name} Model during Training")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.legend(loc='upper right')
+    acc_fig = plt.figure()
+    accuracy_fig = acc_fig.add_subplot()
+    accuracy_fig.plot(train_accuracies, label="Train Accuracy")
+    accuracy_fig.plot(test_accuracies, label="Testing Accuracy")
+    accuracy_fig.set_title(f"Accuracy of {model.name} Model during Training")
+    accuracy_fig.set_xlabel("Epoch")
+    accuracy_fig.set_ylabel("Accuracy")
+    accuracy_fig.legend(loc='upper right')
     plt.savefig(os.path.join(path, f"model_accuracy_plot.png"))
     if plot:
         plt.show()
